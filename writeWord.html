@@ -1,0 +1,392 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width,
+                               height=device-height,
+                               initial-scale=1.0,
+                               maximum-scale=1.0,
+                               user-scalable=no" />
+<title></title>
+</head>
+  <style type="text/css">
+  *
+  {
+	  border:none;
+	  margin:0;
+	  padding:0;
+	  outline:none;
+  }
+   div{
+	  text-align:center;
+	  position:relative;
+	  margin:10px auto;
+	  font:Arial, Helvetica, sans-serif;
+	  color:#666;
+	  
+  }
+  canvas{
+	  display:block;
+	  border:1px solid #BBB;
+	  box-shadow:2px 8px 3px #BBB; 
+  }
+  img{
+	  margin-top:5px;
+  }
+ 
+  input{
+	  background-color:#0094ff;
+	  border:1px solid #0094ff;
+	  width:100px;
+	  height:30px;
+	  color:white;
+	  margin-top:10px;
+  }
+  .left{
+	  float:left;
+  }
+  .right{
+	  float:right;
+  }
+  .clearfix{
+	  clear:both;
+  }
+  input:hover{
+	   background-color:#06F;
+	   color:#ddd;
+  }
+  ul{
+	  list-style:none;
+	  width:320px;
+	  margin:10px auto;
+  }
+  ul li{
+	  width:40px;
+	  height:40px;
+	  display:inline-block;
+  }
+  .slected{
+	  box-shadow:3px 3px 3px #CCC;
+      border:2px solid #0094ff;
+	  border-radius:6px;
+  }
+  #backTop{
+	  width:50px;
+	  height:50px;
+	  background-color:#0093ff;
+	  position:fixed;
+	  bottom:6px;
+	  right:10px;
+	  border-radius:10%;
+	  cursor:pointer;
+	  text-align:center;
+	  vertical-align:central;
+	  line-height:25px;
+	  display:none;
+  }
+   #backTop:after{
+	   content:"写字板";
+	   color:#eee;
+   }
+   #backTop:hover{
+	   background-color:#06F;
+	   color:#ddd;
+   }
+  </style>
+<body>
+<div id="main" class="clearfix">
+     <canvas id="canvas"></canvas>
+   
+     <input type="button" class="left" onclick="javascript:clearRec()" value="清除" />
+     <input type="button" class="right"  onclick="javascript:saveImg()" value="保存" />
+    <div class="clearfix">
+     <h2>选择颜色</h2>
+     <input id="color" type="color" style="border:none; background-color:white;color:white;" value="#09f" />
+     <h4>常用颜色：</h4>
+     <ul class="clearfix">
+        <li class="slected" style="background-color:black;"></li>
+        <li style="background-color:red;"></li>
+        <li style="background-color:blue;"></li>
+        <li style="background-color:green;"></li>
+        <li style="background-color:orange;"></li>
+     </ul>
+     <ul class="clearfix">
+        <li style="background-color:pink;"></li>
+        <li style="background-color:indigo;"></li>
+        <li style="background-color:gold;"></li>
+        <li style="background-color:silver;"></li>
+        <li style="background-color:brown;"></li>
+      </ul>
+      
+     </div>
+     <div id="content">
+        <h1>我的作品</h1>
+        <h5>(长按保存图片、双击可删除、刷新后消失)</h5>
+     </div>
+     <div id="backTop"><div>
+  </div>
+  
+<script type="text/javascript">
+	   var canvas=document.querySelector("#canvas");
+	   var divMain=document.querySelector("#main");
+	    var colors=document.querySelector("#color");
+		
+		var lis=document.querySelectorAll("li");
+      //colors.ondblclick
+		
+		
+	   var context=canvas.getContext("2d");
+	   var width=Math.min(document.body.clientWidth-20,400),height=width;
+	   var isMouseDown=false;
+	   var pointLas={x:0,y:0};
+	   var mouseDownTime=0;
+	   var lasttouchStartTimes=0;
+	   var lasttouchendTimes=0;
+	   var lastWidth=-1;
+	   var color="black";
+	   window.onload=function(){
+		   canvas.width=width;
+	       canvas.height=height;
+		   divMain.style.width=width+"px";
+		   drawLine();
+		   var backTop = document.getElementById("backTop");  
+           new BackTop(backTop,10);
+		   //选择器事件
+		   bindButtonEvent(colors,"change",function(){
+			   color=this.value;
+			});
+			//常用颜色
+			for(var i=0;i<lis.length;i++){
+				lis[i].item=i;
+				 bindButtonEvent(lis[i],"click",function(){
+			         color=this.style.backgroundColor;
+					 this.className="slected";
+					 for(var i=0;i<lis.length;i++){
+						 if(i!==this.item) lis[i].className="";
+					 }
+			     });
+		    }
+	   }
+	   //实现到达顶端的类
+	 var BackTop=function(domE,distance){
+		 if(!domE)return;
+		 var _onscroll=window.onscroll,_onclick=domE.onclick;
+		 window.onscroll=throttle(function(){
+			 typeof _onscroll==="function"&&_onscroll.apply(this,arguments);
+			 toggleDomE();
+			 },100);
+		domE.onclick=function(){
+			typeof _onclick==="function"&&_onclick.apply(this,arguments);
+			var timer;
+			
+				//while(top>0){
+//					document.documentElement.scrollTop-=top;
+//					document.body.scrollTop-=top;
+//					top=document.documentElement.scrollTop||document.body.scrollTop;
+//				}
+              if(top<=0){
+				  clearInterval(timer);
+			  }else{
+				  timer=setInterval(function(){
+					  var top=document.documentElement.scrollTop||document.body.scrollTop;
+					  var speed=top/5+1;
+					  document.documentElement.scrollTop-=speed;
+              		  document.body.scrollTop-=speed;
+					  if(top<=0)  clearInterval(timer);
+					  console.log(timer);
+					  },50);
+			  }
+			}
+		function toggleDomE(){
+			domE.style.display=(document.documentElement.scrollTop||document.body.scrollTop)>(distance||500)?'block':'none';
+		}
+		function throttle(func,wait){
+			var timer=null;
+			return function(){
+				var self=this,args=arguments;
+				if(timer) clearTimeout(timer);
+				timer=setTimeout(function(){
+					return typeof func==='function'&&func.apply(self,args);
+					},wait);
+				}
+		}
+	 }
+	   function drawLine(){
+		   context.save();
+		   context.strokeStyle="#999";
+		   context.lineWidth=2;
+		   context.beginPath();
+		   var line=6;
+		   for(var i=0;i<width/line;i+=2){
+		      context.moveTo(3+line*i,3+line*i);
+		      context.lineTo(3+line*(i+1),3+line*(i+1));
+		   }
+		    for(var i=0;i<width/line;i+=2){
+		      context.moveTo(width-3-line*i,3+line*i);
+		      context.lineTo(width-3-line*(i+1),3+line*(i+1));
+		   }
+		    for(var i=0;i<width/line;i+=2){
+		      context.moveTo(3+line*i,width/2);
+		      context.lineTo(3+line*(i+1),width/2);
+		   }
+		    for(var i=0;i<width/line;i+=2){
+		      context.moveTo(width/2,3+line*i);
+		      context.lineTo(width/2,3+line*(i+1));
+		   }
+		   context.closePath();
+		   context.stroke();
+		   context.restore();
+		   
+		   context.save();
+		   context.strokeStyle="#666";
+		   context.lineWidth=6;
+		   context.beginPath();
+		   context.moveTo(3,3);
+		   context.lineTo(width-3,3);
+		   context.lineTo(width-3,height-3);
+		   context.lineTo(3,height-3);
+		   context.closePath();
+		   context.stroke();
+		   context.restore();
+		   
+	   }
+	   canvas.onmousedown=function(e){
+		   e.preventDefault();
+		   isMouseDown=true;
+		    var pointLoc= getPoint(e.clientX,e.clientY);
+		    pointLas=pointLoc; 
+			mouseDownTime=new Date().getTime();
+	   }
+	   canvas.onmouseup=function(e){
+		   e.preventDefault();
+		   isMouseDown=false;
+	   }
+	   canvas.onmousemove=function(e){
+		   e.preventDefault();
+		   if(isMouseDown){
+			   var pointLoc= getPoint(e.clientX,e.clientY);
+			   drawWord(pointLoc);
+		   }
+	   }
+	   canvas.onmouseout=function(e){
+		   e.preventDefault();
+		    isMouseDown=false;
+	   }
+	   canvas.addEventListener("touchstart",function(e){
+		    e.preventDefault();
+			isMouseDown=true;
+		    var pointLoc= getPoint(e.touches[0].pageX,e.touches[0].pageY);
+		    pointLas=pointLoc; 
+			mouseDownTime=new Date().getTime();
+			var timespan=mouseDownTime-lasttouchendTimes;
+			if(timespan>0&&timespan<100) alert(1);
+		   },false);
+	    canvas.addEventListener("touchmove",function(e){
+			 e.preventDefault();
+			 if(isMouseDown){
+			   var pointLoc= getPoint(e.changedTouches[0].pageX,e.changedTouches[0].pageY);
+			   drawWord(pointLoc);
+		   }
+			},false);
+		 canvas.addEventListener("touchend",function(e){
+			  e.preventDefault();
+			  isMouseDown=false;
+			 },false);
+	   
+	   //得到点击点位置;
+	   function getPoint(x,y){
+		   var x1=x-canvas.getBoundingClientRect().left;
+		   var y1=y-canvas.getBoundingClientRect().top;
+		   return {x:x1,y:y1};
+	   }
+	   function getDis(las,loc){
+		   return Math.sqrt((loc.x-las.x)*(loc.x-las.x)+(loc.y-las.y)*(loc.y-las.y));
+	   }
+	   function drawWord(point){
+		   var curTimeStamp=new Date().getTime();
+		   var s=getDis(pointLas,point);
+		   var t=curTimeStamp-mouseDownTime;
+		   console.log("s:"+s);
+		   console.log("t:"+t);
+		   var wLine=calLineWidth(s,t);
+		   console.log("wLine:"+wLine);
+		   context.lineWidth=wLine;
+		   context.lineCap="round";
+		   context.lineJoin="round";
+		   context.strokeStyle=color;
+		   context.beginPath();
+		   context.moveTo(pointLas.x,pointLas.y);
+		   context.lineTo(point.x,point.y);
+		   context.stroke();
+		   
+		   pointLas=point;
+		   mouseDownTime=curTimeStamp;
+		   lastWidth=wLine;
+		   console.log(lastWidth);
+	   }
+	   
+	   function calLineWidth(s,t){
+		   var maxStrokeV=1.8;
+		   var minStrokeV=0.07;
+		   var maxWLine=30;
+		   var minWLine=1;
+		   var v=s/t;
+		   var resultWidth;
+		   if(v<=minStrokeV){
+			   resultWidth=maxWLine;
+		   }else if(v>=maxStrokeV){
+			   resultWidth=minWLine;
+		   }else{
+			   //v t线性变化
+			  resultWidth=maxWLine- (v-minStrokeV)/(maxStrokeV-minStrokeV)*(maxWLine-minWLine);
+		   }
+		   
+		   if(lastWidth==-1)  
+		       return resultWidth;
+		   else 
+		       return (lastWidth*2/3+resultWidth*1/3);
+	   }
+	   //清除
+	   function clearRec(){
+		   context.clearRect(0,0,width,height);
+		   drawLine();
+	   }
+	   //保存
+	   function saveImg ()   
+            {  
+               
+                var image = canvas.toDataURL("image/png");  
+                var content=document.getElementById("content");  
+                var imag=new Image();
+				imag.src=image;
+				//console.log(image);
+				content.appendChild(imag);
+			    var imgs=document.querySelectorAll("img");
+				if(imgs.length>0){
+				for(var i=0;i<imgs.length;i++){
+					imgs[i].ondblclick=function(){
+						this.remove();
+					}
+					imgs[i].addEventListener("touchstart",function(e){
+						  lasttouchStartTimes=new Date().getTime();
+						  var timespan=lasttouchStartTimes-lasttouchendTimes;
+						  if(timespan>0&&timespan<300) this.remove();
+		             },false);
+					 imgs[i].addEventListener("touchend",function(e){
+						   lasttouchendTimes=new Date().getTime();
+		             },false);
+				}
+				}
+            }  
+	   function bindButtonEvent(element, type, handler)  
+            {  
+                   if(element.addEventListener) {  
+                      element.addEventListener(type, handler, false);  
+                   } else {  
+                      element.attachEvent('on'+type, handler);  
+                   }  
+            }  
+	   
+    </script>
+</body>
+</html>
